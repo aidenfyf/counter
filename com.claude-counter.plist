@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Template. install.sh substitutes __COUNTER_DIR__ with wherever you cloned this
+  and writes the result to ~/Library/LaunchAgents/, so do not edit paths by hand.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.claude-counter</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>__COUNTER_DIR__/execution/refresh.sh</string>
+  </array>
+
+  <!-- Every 10 minutes. Hourly leaves the card visibly behind a live session,
+       which reads as broken even though it is not. A full refresh is ~18s under
+       LowPriorityIO, so this is roughly a 3% duty cycle. -->
+  <key>StartInterval</key>
+  <integer>600</integer>
+
+  <!-- So a completed month still gets archived if the Mac was off at month end. -->
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>__COUNTER_DIR__/out/launchd.log</string>
+  <key>StandardErrorPath</key>
+  <string>__COUNTER_DIR__/out/launchd.err</string>
+
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>LowPriorityIO</key>
+  <true/>
+  <key>Nice</key>
+  <integer>10</integer>
+</dict>
+</plist>

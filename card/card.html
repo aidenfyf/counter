@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>Claude Counter</title>
+<style>
+  /*
+    Glass card, desktop composition (1200x718). The phone gets its own layout in
+    card-phone.html - shrinking this one to widget size drops every label below
+    legible size and the 1px chamfer below one pixel.
+
+    The look is three stacked things:
+      1. a lit background so there is something to transmit
+      2. a translucent panel over it
+      3. a 1px gradient rim, bright top-left, that reads as a chamfered edge
+
+    The rim is what sells it. A uniform border is a 2013 bevel; a rim that decays
+    as it travels from the light is a machined edge. Measured 2.5-3.4x rim-to-
+    interior at top-left, 1.1-2.0x at bottom-right.
+  */
+
+  :root {
+    --bg:        #07070a;
+    --ink:       #f4f2ef;
+    --muted:     #8a8894;
+    --dim:       #85838f;   /* AA 4.5:1 on #07070a. #5c5a66 was 2.7, #7a7885 was 3.93 */
+    --accent:    #ff9557;
+    --radius:    26px;
+    --gap:       18px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    /* Sized to content, measured rather than guessed. Re-measure if type changes. */
+    width: 1200px;
+    height: 718px;
+    background: var(--bg);
+    color: var(--ink);
+    font: 400 16px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Display",
+          "Helvetica Neue", Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* ---- 1. lit background --------------------------------------------------- */
+  /*
+    GEOMETRY, not alpha. The previous pair centred on individual tiles - .glow.a at
+    (210,90) sat on the top-left tile, .glow.b at (1040,180) on the top-right - so
+    the grid came out colour-coded by COLUMN while its meaning is organised by ROW
+    (row 1 = volume, row 2 = quality). Halving the alphas dimmed the light without
+    moving it, and a plain tile still out-warmed the .hot ones.
+
+    Now: one very wide, very diffuse wash centred on the card's own centreline, so
+    illumination falls off gently and symmetrically and no tile owns a light. .hot
+    is left as the only thing that says "look here".
+  */
+  .glow { position: absolute; border-radius: 50%; filter: blur(120px); pointer-events: none; }
+  .glow.a { width: 1900px; height: 780px; left: 50%; transform: translateX(-50%); top: -420px;
+            background: radial-gradient(ellipse, rgba(255,138,80,.20), transparent 66%); }
+  .glow.b { width: 1500px; height: 620px; left: 50%; transform: translateX(-50%); bottom: -400px;
+            background: radial-gradient(ellipse, rgba(255,110,150,.09), transparent 70%); }
+
+  .wrap { position: relative; z-index: 2; padding: 46px 48px 40px; height: 100%;
+          display: flex; flex-direction: column; }
+
+  /* ---- header -------------------------------------------------------------- */
+  /*
+    The chip used to be a filled gradient pill with a hard white top lip and a
+    coloured outer glow - the Aqua recipe, on a different edge language from the
+    tiles, sitting top-left where the eye lands first. It also carried more ink
+    mass than any numeral, so the loudest thing on the card was the time-window
+    label. Now: accent as TEXT on a faint tint, same rim logic as the tiles.
+  */
+  header { display: flex; align-items: baseline; gap: 13px; margin-bottom: 26px; }
+
+  .chip {
+    font-size: 13px; font-weight: 600; letter-spacing: .09em;
+    padding: 6px 12px; border-radius: 10px;
+    color: var(--accent);
+    background: rgba(255,149,87,.09);
+    border: 1px solid rgba(255,149,87,.20);
+  }
+  h1 { font-size: 25px; font-weight: 620; letter-spacing: -.015em; }
+  h1 span { color: var(--muted); font-weight: 450; }
+
+  /* ---- 2 + 3. the glass panel --------------------------------------------- */
+
+  .tile {
+    position: relative;
+    border-radius: var(--radius);
+    padding: 24px 26px;
+    background: linear-gradient(158deg, rgba(255,255,255,.075), rgba(255,255,255,.028) 46%, rgba(255,255,255,.045));
+    -webkit-backdrop-filter: blur(26px) saturate(150%);
+    backdrop-filter: blur(26px) saturate(150%);
+    box-shadow:
+      0 20px 46px -14px rgba(0,0,0,.72),
+      inset 0 1px .5px rgba(255,255,255,.22),
+      inset 0 -1px .5px rgba(0,0,0,.42);
+    display: flex; flex-direction: column; justify-content: center;
+    overflow: hidden;
+  }
+
+  /* the chamfer: 1px gradient ring, bright top-left, gone by bottom-right */
+  .tile::before {
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(145deg,
+      rgba(255,255,255,.62) 0%,
+      rgba(255,255,255,.16) 26%,
+      rgba(255,255,255,.03) 52%,
+      rgba(255,255,255,.10) 100%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+            mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+            mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  /* Softened from a 48% falloff over the top 45%, which was flirting with gloss. */
+  .tile::after {
+    content: ""; position: absolute; left: 0; right: 0; top: 0; height: 44%;
+    background: linear-gradient(178deg, rgba(255,255,255,.055), transparent 80%);
+    pointer-events: none;
+  }
+
+  /* .hot is now the ONLY thing that says "look here" - the glows no longer compete */
+  .tile.hot { background: linear-gradient(158deg, rgba(255,149,87,.30), rgba(255,149,87,.11) 55%, rgba(255,150,90,.07)); }
+  .tile.hot::before {
+    background: linear-gradient(145deg, rgba(255,205,165,.80), rgba(255,149,87,.24) 30%, rgba(255,255,255,.04) 60%, rgba(255,180,130,.18));
+  }
+
+  /* flex-shrink:0 everywhere: without it an over-tall page silently squeezes the
+     cost tile and clips the "saved ..." line instead of overflowing visibly. */
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--gap); flex-shrink: 0; }
+  .grid + .grid { margin-top: var(--gap); }
+
+  /*
+    One numeral size, always. The old size-down was gated on String(num).length,
+    a character count, which shrank "1 in 3.9" (247px wide) while leaving "24,988"
+    (330px) alone - and flipped size as the ratio crossed a decimal. Ratios are
+    rounded to whole numbers now, so nothing needs shrinking.
+    tabular-nums dropped: it centres a leading "1" in a full advance width and
+    optically indents the numeral 5px right of its own label. Nothing here scrolls.
+  */
+  .num  { font-size: 52px; font-weight: 660; letter-spacing: -.035em; line-height: 1; }
+  /* fixed two-line box so a longer label can never shift its numeral off the row */
+  .lab  { margin-top: 10px; font-size: 15px; line-height: 1.32; color: var(--muted);
+          font-weight: 450; min-height: 40px; }
+  .lab b { color: var(--accent); font-weight: 560; }
+
+  /* ---- wide cost tile ------------------------------------------------------ */
+  /*
+    `1fr auto auto` put every spare pixel in column 1, so both right-hand blocks
+    packed against the right edge and the void just moved from the right to the
+    middle-left. Three EQUAL columns instead: the token block now lands under the
+    grid's middle column above it, so the card's strongest alignment cue holds.
+  */
+  .cost { margin-top: var(--gap); height: 196px; flex-shrink: 0;
+          display: grid; grid-template-columns: repeat(3, 1fr); align-items: center; gap: 34px; }
+  .cost .big { font-size: 68px; font-weight: 680; letter-spacing: -.04em; line-height: 1; }
+  .cost .cap { margin-top: 11px; font-size: 15.5px; color: var(--muted); }
+  .cost .sub { margin-top: 7px; font-size: 14px; color: var(--dim); }
+  .cost .sub b { color: var(--accent); font-weight: 560; }
+
+  .mid { text-align: left; }   /* left edge echoes the grid column above */
+  .mid .v { font-size: 30px; font-weight: 640; letter-spacing: -.02em; color: var(--ink); }
+  .mid .t { font-size: 13px; color: var(--muted); margin-top: 6px; }
+
+  .mult { text-align: right; padding-left: 32px; border-left: 1px solid rgba(255,255,255,.10); }
+  .mult .x { font-size: 50px; font-weight: 680; letter-spacing: -.035em;
+             background: linear-gradient(150deg, #ffd0ac, var(--accent));
+             -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .mult .t { font-size: 13.5px; color: var(--muted); margin-top: 5px; }
+
+  footer { margin-top: 18px; display: flex; justify-content: space-between;
+           align-items: center; font-size: 12.5px; color: var(--dim); }
+  .delta b { color: #9db4ff; }
+</style>
+
+<div class="glow a"></div><div class="glow b"></div>
+
+<div class="wrap">
+  <header>
+    <div class="chip" id="window-chip">LAST 30 DAYS</div>
+    <h1>with Claude Code <span id="scope">· local terminal only</span></h1>
+  </header>
+
+  <div class="grid" id="row1"></div>
+  <div class="grid" id="row2"></div>
+
+  <div class="tile hot cost">
+    <div>
+      <div class="big" id="cost">$0</div>
+      <div class="cap" id="cost-cap">at API list rates</div>
+      <div class="sub" id="saved"></div>
+    </div>
+    <div class="mid">
+      <div class="v" id="tok">0</div>
+      <div class="t">tokens read from cache</div>
+    </div>
+    <div class="mult">
+      <div class="x" id="mult">0x</div>
+      <div class="t">my subscription</div>
+    </div>
+  </div>
+
+  <footer>
+    <div id="stamp"></div>
+    <div class="delta" id="delta"></div>
+  </footer>
+</div>
+
+<script>
+  // render.py replaces this whole expression, `null` included. Replacing only the
+  // comment yields `const S = {...} null;` - a syntax error, which renders a
+  // silently empty card that still screenshots at the right size.
+  const S = /*__STATS__*/ null;
+
+  const n = v => v.toLocaleString("en-US");
+  const $ = id => document.getElementById(id);
+  const money = v => "$" + Math.round(v).toLocaleString("en-US");
+
+  function big(v) {
+    if (v >= 1e9) return (v / 1e9).toFixed(1) + "B";
+    if (v >= 1e6) return (v / 1e6).toFixed(0) + "M";
+    if (v >= 1e3) return (v / 1e3).toFixed(0) + "K";
+    return String(v);
+  }
+
+  const tile = (num, label, hot) =>
+    `<div class="tile${hot ? " hot" : ""}">
+       <div class="num">${num}</div>
+       <div class="lab">${label}</div>
+     </div>`;
+
+  function render(s) {
+    $("window-chip").textContent = s.window.label;
+
+    const p = s.phrases, c = s.claude, a = s.activity;
+
+    $("row1").innerHTML =
+      tile(n(s.me.messages), "messages I sent") +
+      tile(n(c.tool_calls), "tools Claude ran <b>for me</b>") +
+      tile(n(c.agents_spawned), "agents spawned");
+
+    // Ratio rounded to a whole number: you cannot have 0.9 of a message, and it
+    // is honest about the precision actually available.
+    $("row2").innerHTML =
+      tile("1 in " + Math.round(p.corrections.one_in),
+           "of my messages are <b>corrections</b>", true) +
+      tile(n(p.youre_right.count), "times Claude said <b>you’re right</b>") +
+      tile(n(c.commits), "commits written by Claude");
+
+    $("cost").textContent = money(s.cost.api_equivalent_usd);
+    if (s.cost.saved_usd != null) {
+      $("saved").innerHTML =
+        `saved <b>${money(s.cost.saved_usd)}</b> &nbsp;·&nbsp; ${s.cost.plan_label} at $${s.cost.plan_monthly_usd}/mo`;
+    }
+    $("tok").textContent = big(s.tokens.cache_read);
+    $("mult").textContent = (s.cost.multiple ?? 0) + "x";
+
+    const when = new Date(s.generated_at);
+    $("stamp").textContent =
+      `${a.sessions} sessions · ${a.active_days} active days · ${a.tools_per_message} tools per message`
+      + ` · updated ${when.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`;
+
+    // Rendered only when count.py proved both windows complete. A delta against a
+    // pruned window reads +2000% and discredits every other number on the card.
+    if (s.comparison) {
+      const d = s.comparison.cost_pct;
+      $("delta").innerHTML =
+        `${d >= 0 ? "▲" : "▼"} <b>${Math.abs(d)}%</b> vs the previous ${s.window.days} days`;
+    }
+  }
+
+  if (S) render(S);
+</script>

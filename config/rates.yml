@@ -1,0 +1,27 @@
+# Anthropic list pricing, USD per million tokens.
+# Verified 2026-07-31 against the claude-api skill reference.
+# Cache write is 2x input at the 1-hour TTL Claude Code uses; cache read is 0.1x input.
+# Update these when pricing changes - the card recomputes, it does not store a frozen dollar figure.
+
+cache_write_multiplier: 2.0    # 1h TTL. Use 1.25 for 5-minute TTL.
+cache_read_multiplier: 0.1
+
+models:
+  claude-opus-5:              { input: 5,  output: 25 }
+  claude-opus-4-8:            { input: 5,  output: 25 }
+  claude-opus-4-7:            { input: 5,  output: 25 }
+  claude-opus-4-6:            { input: 5,  output: 25 }
+  claude-fable-5:             { input: 10, output: 50 }
+  claude-mythos-5:            { input: 10, output: 50 }
+  claude-sonnet-5:            { input: 3,  output: 15 }
+  claude-sonnet-4-6:          { input: 3,  output: 15 }
+  claude-haiku-4-5:           { input: 1,  output: 5 }
+  claude-haiku-4-5-20251001:  { input: 1,  output: 5 }
+
+# Subscription price by rate-limit tier, read from ~/.claude.json
+# oauthAccount.organizationRateLimitTier. Label is what prints on the card.
+plans:
+  default_claude_max_20x: { label: "Max 20x", monthly: 200 }
+  default_claude_max_5x:  { label: "Max 5x",  monthly: 100 }
+  default_claude_pro:     { label: "Pro",     monthly: 20 }
+  default_pro:            { label: "Pro",     monthly: 20 }

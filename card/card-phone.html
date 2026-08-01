@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>Claude Counter - phone</title>
+<style>
+  /*
+    iPhone LARGE widget composition. Deliberately NOT the desktop card scaled down.
+
+    Sizing: a large widget is ~338x354pt. This is authored at 1014x1062 CSS px and
+    rendered at scale 1, i.e. 3x nominal, so 1 CSS px here = 1 device px on a 3x
+    iPhone and 3 px = 1 point. Every unit below is therefore "device pixels":
+    divide by 3 for points. Labels at 30px = 10pt, which clears the ~9pt legibility
+    floor. The desktop card's labels land at 3.6pt at this size, which is why it
+    gets its own file.
+
+    Four stats, not seven. The chamfer is 2px here (0.67pt); the desktop card's
+    1px would be a third of a point and vanish.
+  */
+
+  :root {
+    --bg:     #07070a;
+    --ink:    #f4f2ef;
+    --muted:  #9a98a4;
+    --accent: #ff9557;
+    --radius: 54px;
+    --gap:    27px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 1014px; height: 1062px;
+    background: var(--bg); color: var(--ink);
+    font: 400 30px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Display",
+          "Helvetica Neue", Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden; position: relative;
+  }
+
+  .glow { position: absolute; border-radius: 50%; filter: blur(180px); pointer-events: none; }
+  .glow.a { width: 900px; height: 760px; left: -240px; top: -280px;
+            background: radial-gradient(circle, rgba(255,120,50,.24), transparent 68%); }
+  .glow.b { width: 800px; height: 700px; right: -260px; bottom: -240px;
+            background: radial-gradient(circle, rgba(255,110,150,.12), transparent 70%); }
+
+  .wrap { position: relative; z-index: 2; padding: 48px; height: 100%;
+          display: flex; flex-direction: column; }
+
+  header { display: flex; align-items: baseline; gap: 18px; margin-bottom: 30px; }
+  .chip {
+    font-size: 28px; font-weight: 600; letter-spacing: .09em;
+    padding: 11px 20px; border-radius: 20px;
+    color: var(--accent);
+    background: rgba(255,149,87,.10);
+    border: 2px solid rgba(255,149,87,.22);
+  }
+  .scope { font-size: 27px; color: var(--muted); font-weight: 450; }
+
+  .tile {
+    position: relative; border-radius: var(--radius); padding: 40px 42px;
+    background: linear-gradient(158deg, rgba(255,255,255,.08), rgba(255,255,255,.03) 46%, rgba(255,255,255,.05));
+    -webkit-backdrop-filter: blur(50px) saturate(150%);
+    backdrop-filter: blur(50px) saturate(150%);
+    box-shadow: 0 40px 90px -28px rgba(0,0,0,.75),
+                inset 0 2px 1px rgba(255,255,255,.22),
+                inset 0 -2px 1px rgba(0,0,0,.42);
+    display: flex; flex-direction: column; justify-content: center; overflow: hidden;
+  }
+  /* 2px chamfer: at 3x this is 0.67pt, a fine machined edge. 1px would vanish. */
+  .tile::before {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 2px;
+    background: linear-gradient(145deg, rgba(255,255,255,.62) 0%, rgba(255,255,255,.16) 26%,
+                rgba(255,255,255,.03) 52%, rgba(255,255,255,.10) 100%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+            mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+            mask-composite: exclude;
+    pointer-events: none;
+  }
+  .tile.hot { background: linear-gradient(158deg, rgba(255,149,87,.20), rgba(255,149,87,.06) 55%, rgba(255,255,255,.04)); }
+  .tile.hot::before {
+    background: linear-gradient(145deg, rgba(255,205,165,.80), rgba(255,149,87,.24) 30%,
+                rgba(255,255,255,.04) 60%, rgba(255,180,130,.18));
+  }
+
+  /* hero: the cost is the headline on a glance-sized surface */
+  .hero { margin-bottom: var(--gap); padding: 44px 42px; flex-shrink: 0; }
+  .hero .big { font-size: 112px; font-weight: 680; letter-spacing: -.04em; line-height: 1; }
+  .hero .cap { margin-top: 16px; font-size: 28px; color: var(--muted); }
+  .hero .row { margin-top: 20px; display: flex; align-items: baseline; gap: 16px; }
+  .hero .x  { font-size: 52px; font-weight: 680; letter-spacing: -.03em; color: var(--accent); }
+  .hero .xt { font-size: 27px; color: var(--muted); }
+
+  /* flex-shrink:0 throughout: a two-line footer must overflow visibly, never
+     silently squeeze the tiles. Same rule the desktop card learned. */
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap); flex: 1 0 auto; }
+  .num { font-size: 64px; font-weight: 660; letter-spacing: -.035em; line-height: 1; }
+  .lab { margin-top: 16px; font-size: 30px; line-height: 1.28; color: var(--muted); font-weight: 450; }
+  .lab b { color: var(--accent); font-weight: 560; }
+
+  /* 28px = 9.3pt at 3x, clearing the legibility floor this file sets above.
+     #85838f gives 4.5:1 AA; #7a7885 measured 3.65. */
+  footer { margin-top: 26px; flex-shrink: 0; font-size: 28px; color: #85838f; }
+</style>
+
+<div class="glow a"></div><div class="glow b"></div>
+
+<div class="wrap">
+  <header>
+    <div class="chip" id="chip">LAST 30 DAYS</div>
+    <div class="scope">Claude Code</div>
+  </header>
+
+  <div class="tile hot hero">
+    <div class="big" id="cost">$0</div>
+    <div class="cap">at API list rates</div>
+    <div class="row">
+      <span class="x" id="mult">0x</span>
+      <span class="xt" id="plan"></span>
+    </div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <footer id="stamp"></footer>
+</div>
+
+<script>
+  const S = /*__STATS__*/ null;
+  const n = v => v.toLocaleString("en-US");
+  const $ = id => document.getElementById(id);
+  const money = v => "$" + Math.round(v).toLocaleString("en-US");
+
+  const tile = (num, label) =>
+    `<div class="tile"><div class="num">${num}</div><div class="lab">${label}</div></div>`;
+
+  function render(s) {
+    $("chip").textContent = s.window.label;
+    $("cost").textContent = money(s.cost.api_equivalent_usd);
+    $("mult").textContent = (s.cost.multiple ?? 0) + "x";
+    $("plan").textContent = `my ${s.cost.plan_label} plan · $${s.cost.plan_monthly_usd}/mo`;
+
+    // Four stats only. Seven unlabelled numbers is noise at this size.
+    $("grid").innerHTML =
+      tile(n(s.me.messages), "messages I sent") +
+      tile(n(s.claude.tool_calls), "tools run <b>for me</b>") +
+      tile("1 in " + Math.round(s.phrases.corrections.one_in), "are <b>corrections</b>") +
+      tile(n(s.claude.commits), "commits by Claude");
+
+    const w = new Date(s.generated_at);
+    $("stamp").textContent = `${s.activity.active_days} active days · updated `
+      + w.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  }
+
+  if (S) render(S);
+</script>

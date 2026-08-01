@@ -1,0 +1,82 @@
+# Every phrase counter is a row here. Adding or changing a tile is a config edit,
+# never a code change.
+#
+#   who   : me     -> matched against human-typed turns only (origin.kind == "human")
+#           claude -> matched against assistant text output
+#   mode  : turns  -> how many messages matched at least once
+#           hits   -> total number of occurrences
+#   regex : Python re, always case-insensitive
+#
+# Counts are computed over the rolling window. Verified values in the comments are
+# from the 30 days ending 2026-07-31, for sanity-checking a fresh run.
+
+counters:
+  - key: corrections
+    who: me
+    mode: turns
+    label: "of my messages are corrections"
+    regex: '\b(no|nope|wrong|incorrect|actually|not quite|that''s not|thats not|still|again)\b'
+    # verified ~164 turns
+
+  - key: questions
+    who: me
+    mode: turns
+    label: "of my messages are questions"
+    regex: '\?'
+    # verified ~204 turns
+
+  - key: praise
+    who: me
+    mode: turns
+    label: "times I said nice work"
+    regex: '\b(nice|love it|love this|perfect|beautiful|awesome|great|sick|clean)\b'
+    # verified ~94 turns
+
+  - key: thanks
+    who: me
+    mode: turns
+    label: "times I said thanks"
+    regex: '\b(thank you|thanks|appreciate)\b'
+    # verified ~18 turns
+
+  - key: swearing
+    who: me
+    mode: turns
+    label: "times I swore at it"
+    regex: '\b(fuck|shit|damn|wtf|bullshit)\b'
+    # verified ~2 turns
+
+  - key: em_dash_policing
+    who: me
+    mode: turns
+    label: "times I policed an em dash"
+    regex: 'em.?dash|—'
+    # verified ~15 turns
+
+  - key: just_do_it
+    who: me
+    mode: turns
+    label: "times I said stop asking and go"
+    regex: '\b(just do it|go ahead|ship it|act autonomously|autonomous|don''t ask|dont ask|send it|proceed)\b'
+    # verified ~29 turns
+
+  - key: qa_demand
+    who: me
+    mode: turns
+    label: "times I demanded QA"
+    regex: '\b(qa|verify|check it|test it|screenshot)\b'
+    # verified ~41 turns
+
+  - key: youre_right
+    who: claude
+    mode: turns
+    label: "times Claude said you're right"
+    regex: 'you''?re (absolutely )?right|you are right|good catch'
+    # verified ~76
+
+  - key: apologies
+    who: claude
+    mode: turns
+    label: "times Claude apologised"
+    regex: '\b(sorry|apolog)'
+    # verified ~35

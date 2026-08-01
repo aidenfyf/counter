@@ -1,0 +1,20 @@
+# Generated output - regenerated on every run
+out/
+
+# Your own usage history. Real numbers, real project names: keep it local.
+archive/*.json
+
+# Personal launchd copy (the tracked template is com.claude-counter.plist)
+com.aiden.*.plist
+
+# Working notes containing real spend and account details
+PLAN.md
+
+# Reference screenshots and device captures. Someone else's post is not ours to
+# redistribute, and phone screenshots carry home-screen contents.
+IMG_4288.PNG
+images/
+
+*.pyc
+__pycache__/
+.DS_Store
