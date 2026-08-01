@@ -97,6 +97,42 @@ const CANDIDATES = [
   ["local folder",  () => FileManager.local(),  (fm) => FOLDER + "/stats.json"],
 ];
 
+// The on-device copy of the last stats we successfully read, in Scriptable's
+// LOCAL container - not iCloud. See readCache() for why this exists.
+const CACHE = "ClaudeCounter-cache.json";
+
+/**
+ * Persist the last good payload locally.
+ *
+ * The whole point: iCloud is a *view* of a file, not a guarantee that its bytes
+ * are on this phone. When the Mac is asleep the file is still listed, still
+ * passes fileExists(), and still reports as downloaded - but the read comes back
+ * empty, because the widget extension gets a couple of seconds of runtime and no
+ * reliable way to materialise a dataless placeholder in that window. Writing our
+ * own copy into the local container removes iCloud from the render path
+ * entirely: once a value has been seen, it is ours.
+ */
+function writeCache(stats) {
+  try {
+    const fm = FileManager.local();
+    fm.writeString(
+      fm.joinPath(fm.documentsDirectory(), CACHE),
+      JSON.stringify({ cached_at: new Date().toISOString(), stats }));
+  } catch (e) { /* a cache miss must never break the render */ }
+}
+
+function readCache() {
+  try {
+    const fm = FileManager.local();
+    const p = fm.joinPath(fm.documentsDirectory(), CACHE);
+    if (!fm.fileExists(p)) return null;
+    const raw = fm.readString(p);
+    if (!raw) return null;
+    const c = JSON.parse(raw);
+    return c && c.stats ? c : null;
+  } catch (e) { return null; }
+}
+
 /**
  * Try every known location and report what happened.
  * Deliberately does NOT bail on fileExists(): for an iCloud file that has not
@@ -115,8 +151,21 @@ async function loadStats() {
         if (fm.isFileStoredIniCloud(path) && !fm.isFileDownloaded(path)) {
           await fm.downloadFileFromiCloud(path);
         }
-        const raw = fm.readString(path);
-        if (raw) return { stats: JSON.parse(raw), from: label };
+        let raw = fm.readString(path);
+        // An empty read on a file that exists is the placeholder case, and
+        // isFileDownloaded() lies about it often enough not to be trusted as the
+        // only gate. Ask for the download unconditionally and read once more.
+        if (!raw && fm.isFileStoredIniCloud(path)) {
+          try {
+            await fm.downloadFileFromiCloud(path);
+            raw = fm.readString(path);
+          } catch (e) { /* fall through to the cache */ }
+        }
+        if (raw) {
+          const stats = JSON.parse(raw);
+          writeCache(stats);
+          return { stats, from: label };
+        }
         tried.push(`${label}: empty`);
       } else {
         tried.push(`${label}: not found`);
@@ -125,6 +174,13 @@ async function loadStats() {
       tried.push(`${label}: ${String(e).slice(0, 40)}`);
     }
   }
+
+  // Nothing readable right now. Show the last numbers we ever saw rather than a
+  // diagnostic screen: they are real, they are labelled with their own date, and
+  // a slightly old card is worth more on a home screen than an error is.
+  const cached = readCache();
+  if (cached) return { stats: cached.stats, from: "cache", cached_at: cached.cached_at };
+
   // one listing of the root so the failure is diagnosable from the widget itself
   let seen = "";
   try {
@@ -292,8 +348,12 @@ function build(s, diag) {
   const footRow = w.addStack();
   footRow.layoutHorizontally();
   footRow.setPadding(0, PAD, 0, 0);   // sit on the tile TEXT rail, not the tile edge
+  // When we are rendering the local cache, say so. The timestamp is the Mac's
+  // last generation either way, so without this marker a stale card is
+  // indistinguishable from a live one that simply has not ticked over yet.
+  const stale = diag && diag.from === "cache" ? ` ${DOT} cached` : "";
   const foot = footRow.addText(
-    `${s.activity.active_days} active days ${DOT} updated ${df.string(new Date(s.generated_at))}`);
+    `${s.activity.active_days} active days ${DOT} updated ${df.string(new Date(s.generated_at))}${stale}`);
   foot.font = Font.systemFont(10);
   foot.textColor = DIM;
   foot.lineLimit = 1;

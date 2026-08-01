@@ -178,6 +178,16 @@ fail, so the first run into a fresh folder succeeds and every run after it fails
 An Übersicht child process is not subject to that guard, so the mirror lives in the
 widget. No Full Disk Access grant is needed anywhere.
 
+**iCloud tells you a file is there when its bytes are not.** With the Mac asleep,
+the phone still lists `stats.json`, still returns true from `fileExists()`, and
+still claims `isFileDownloaded()` — and then `readString()` hands back an empty
+string, because what is on the device is a dataless placeholder. A widget
+extension gets seconds of runtime, so the on-demand fetch does not reliably land
+inside the render. The card cannot depend on iCloud at draw time: on every
+successful read it writes its own copy into Scriptable's **local** container and
+falls back to that, marking the footer `cached`. The numbers are then as fresh as
+the last sync and never blank, which is the correct trade for a home screen.
+
 **Übersicht serves widgets over `http://localhost:41416`,** so a `file://` image is
 cross-origin and blocked silently — you get alt text and a border, which reads as a
 broken layout rather than a blocked request. Reference assets relatively.
