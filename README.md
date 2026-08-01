@@ -1,4 +1,4 @@
-# counter
+# claude-counter
 
 A glanceable card of your last 30 days with Claude Code, on your Mac desktop and
 your iPhone home screen. It reads the session transcripts already sitting on your
@@ -52,8 +52,8 @@ change without touching Python.
 ## Install
 
 ```sh
-git clone https://github.com/<you>/counter.git
-cd counter
+git clone https://github.com/aidenfyf/claude-counter.git
+cd claude-counter
 pip3 install pyyaml pillow
 ./install.sh
 ```

@@ -73,7 +73,7 @@ function startDrag(e) {
 // with a probe widget. So this removes the Full Disk Access requirement entirely.
 export const command = `
   W="$HOME/Library/Application Support/Übersicht/widgets/${CARD}"
-  OUT="$HOME/claude-code/gh/counter/out"
+  OUT="__COUNTER_DIR__/out"
   for D in "$HOME/Library/Mobile Documents/com~apple~CloudDocs/ClaudeCounter" \
            "$HOME/Library/Mobile Documents/iCloud~dk~simonbs~Scriptable/Documents/ClaudeCounter"; do
     [ -d "$(dirname "$D")" ] || continue

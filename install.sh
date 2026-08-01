@@ -28,7 +28,7 @@ echo "  scheduled: $LABEL (every 10 min)"
 
 # 3. desktop widget, if Übersicht is installed
 if [ -d "$WIDGETS" ]; then
-  cp "$DIR/widgets/claude-counter.jsx" "$WIDGETS/"
+  sed "s|__COUNTER_DIR__|$DIR|g" "$DIR/widgets/claude-counter.jsx" > "$WIDGETS/claude-counter.jsx"
   cp "$DIR/out/card.png" "$WIDGETS/claude-counter.png" 2>/dev/null || true
   # dragging needs interaction mode; harmless if already set
   defaults write tracesOf.Uebersicht enableInteraction -bool true
