@@ -2,7 +2,12 @@
 """
 Scan Claude Code transcripts and emit stats.json for the counter card.
 
-Layer 3 (execution). Deterministic, no network, no LLM.
+Layer 3 (execution). Deterministic, no LLM. One optional network read: if
+USAGE_SINK_URL + USAGE_SINK_KEY are set, token usage self-reported by Aiden's own
+agents (Lucy, Tars, Grant Scout, Growth Plan Creator, Tally) is merged in. Those
+agents call the Anthropic API directly and never write to ~/.claude/projects, so
+without this they are invisible. The read is fail-open: if the sink is unset or
+unreachable the card still renders from local transcripts alone.
 
 Reads   ~/.claude/projects/**/*.jsonl   (session transcripts)
         ~/.claude.json                   (subscription tier)
@@ -256,6 +261,54 @@ def apply_patterns(window, patterns):
     return out
 
 
+
+def fetch_agent_usage(start, end):
+    """
+    Pull agent-reported usage from the Supabase sink for [start, end).
+
+    Returns (per_model, per_agent). Fail-open: any problem returns empty dicts so a
+    sink outage degrades the card to local-only rather than breaking the run.
+    """
+    url = os.environ.get("USAGE_SINK_URL")
+    key = os.environ.get("USAGE_SINK_KEY")
+    if not url or not key:
+        return {}, {}
+    import urllib.parse
+    import urllib.request
+    # PostgREST expresses a range as the SAME column repeated, so this must be a list
+    # of pairs; a dict would silently drop one bound and over-count the window.
+    q = urllib.parse.urlencode([
+        ("select", "agent,model,input_tokens,output_tokens,"
+                   "cache_creation_input_tokens,cache_read_input_tokens"),
+        ("ts", f"gte.{start.isoformat()}"),
+        ("ts", f"lt.{end.isoformat()}"),
+        ("limit", "100000"),
+    ])
+    try:
+        req = urllib.request.Request(
+            f"{url}/rest/v1/agent_usage_events?{q}",
+            headers={"apikey": key, "Authorization": f"Bearer {key}"},
+        )
+        rows = json.loads(urllib.request.urlopen(req, timeout=10).read())
+    except Exception as e:
+        print(f"  agent usage sink unavailable ({e}); local transcripts only", file=sys.stderr)
+        return {}, {}
+
+    TOK = ("input_tokens", "output_tokens",
+           "cache_creation_input_tokens", "cache_read_input_tokens")
+    per_model = defaultdict(Counter)
+    per_agent = defaultdict(Counter)
+    for r in rows:
+        m = r.get("model") or "unknown"
+        a = r.get("agent") or "unknown"
+        for k in TOK:
+            v = int(r.get(k) or 0)
+            per_model[m][k] += v
+            per_agent[a][k] += v
+        per_agent[a]["calls"] += 1
+    return per_model, per_agent
+
+
 def main():
     started = time.time()
     rates = load_cfg("rates.yml")
@@ -270,6 +323,14 @@ def main():
     files = scan(windows, now - 2 * win)
 
     cur, prior = windows["current"], windows["prior"]
+
+    # Merge agent-reported usage (Lucy, Tars, Grant Scout, GPC, Tally). Done before
+    # cost/totals so those figures cover every surface, not just Claude Code. Kept in
+    # `agents` too, so the card can always show what came from where.
+    agent_models, agent_totals = fetch_agent_usage(cur.start, cur.end)
+    for model, tok in agent_models.items():
+        cur.tokens[model].update(tok)
+
     plan = plan_info(rates)
     cost = cur.cost(rates)
     tok = cur.totals()
@@ -292,6 +353,10 @@ def main():
 
     stats = {
         "generated_at": now.isoformat(),
+        "agents": {
+            a: {**dict(t), "calls": t.get("calls", 0)}
+            for a, t in sorted(agent_totals.items())
+        },
         "window": {
             "days": WINDOW_DAYS,
             "start": cur.start.isoformat(),
